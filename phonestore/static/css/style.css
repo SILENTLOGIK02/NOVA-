@@ -191,3 +191,32 @@ footer .socials a:hover{background:var(--gradient);color:#1a1208;border-color:tr
   .burger{display:block}
   .search{max-width:none;order:3;flex-basis:100%}
 }
+
+/* ===== التعديل الجديد لإصلاح الهيدر والثلاث خطوط في الهاتف والـ PC الباقي كما هو ===== */
+@media (max-width: 900px) {
+  .nav-inner {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 10px 0 !important;
+  }
+
+  .brand {
+    order: 1 !important;
+    margin-left: auto !important;
+  }
+
+  .burger {
+    order: 2 !important;
+    margin-right: auto !important;
+    padding: 8px !important;
+    display: block !important;
+  }
+
+  .search {
+    order: 3 !important;
+    flex-basis: 100% !important;
+    margin-top: 12px !important;
+  }
+}
