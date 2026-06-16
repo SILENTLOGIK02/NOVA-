@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}{{ STORE_NAME }} - {{ STORE_TAGLINE }}{% endblock %}</title>
+<link rel="icon" href="{{ url_for('static',filename='images/logo.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}">
+</head>
+<body>
+<div id="loader"><div class="spinner"></div></div>
+
+<header class="nav">
+  <div class="container nav-inner">
+    <a href="{{ url_for('index') }}" class="brand">
+      <img src="{{ url_for('static',filename='images/logo.png') }}" alt="{{ STORE_NAME }}">
+      <span>{{ STORE_NAME }}</span>
+    </a>
+    <nav class="nav-links">
+      <a href="{{ url_for('index') }}">الرئيسية</a>
+      <a href="{{ url_for('index') }}#products">المنتجات</a>
+      <a href="{{ url_for('contact') }}">تواصل معنا</a>
+      {% if session.admin %}<a href="{{ url_for('admin_dashboard') }}">لوحة التحكم</a>{% endif %}
+    </nav>
+    <form class="search" action="{{ url_for('index') }}" method="get">
+      <input type="search" name="q" placeholder="ابحث عن هاتف..." value="{{ request.args.get('q','') }}">
+    </form>
+    <button class="burger" aria-label="القائمة">☰</button>
+  </div>
+</header>
+
+<main>
+  <div class="container">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat,m in msgs %}<div class="flash {{ cat }}">{{ m }}</div>{% endfor %}
+    {% endwith %}
+  </div>
+  {% block content %}{% endblock %}
+</main>
+
+<footer>
+  <div class="container">
+    <div class="brand" style="justify-content:center">
+      <img src="{{ url_for('static',filename='images/logo.png') }}" alt="" style="width:36px;height:36px;border-radius:50%">
+      <span>{{ STORE_NAME }}</span>
+    </div>
+    <div class="socials">
+      <a href="https://wa.me/{{ WHATSAPP_NUMBER }}" target="_blank" title="WhatsApp">💬</a>
+      <a href="{{ INSTAGRAM_URL }}" target="_blank" title="Instagram">📷</a>
+      <a href="{{ FACEBOOK_URL }}" target="_blank" title="Facebook">📘</a>
+    </div>
+    <p>© {{ STORE_NAME }} — جميع الحقوق محفوظة</p>
+  </div>
+</footer>
+
+<script src="{{ url_for('static',filename='js/main.js') }}"></script>
+</body>
+</html>

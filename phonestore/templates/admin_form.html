@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ 'تعديل' if p else 'إضافة' }} منتج{% endblock %}
+{% block content %}
+<section class="section container">
+  <div class="form-card" style="max-width:640px">
+    <h1>{{ 'تعديل منتج' if p else 'إضافة منتج جديد' }}</h1>
+    <form method="post" enctype="multipart/form-data">
+      <div class="form-group"><label>اسم المنتج</label><input name="name" required value="{{ p.name if p else '' }}"></div>
+      <div class="form-group"><label>الماركة</label><input name="brand" value="{{ p.brand if p else '' }}"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group"><label>السعر ({{ CURRENCY }})</label><input type="number" step="1" name="price" required value="{{ p.price if p else '' }}"></div>
+        <div class="form-group"><label>السعر القديم (اختياري)</label><input type="number" step="1" name="old_price" value="{{ p.old_price if p and p.old_price else '' }}"></div>
+      </div>
+      <div class="form-group"><label>الوصف</label><textarea name="description">{{ p.description if p else '' }}</textarea></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="form-group"><label>المخزون</label><input type="number" name="stock" value="{{ p.stock if p else 1 }}"></div>
+        <div class="form-group" style="display:flex;align-items:end"><label class="checkbox"><input type="checkbox" name="featured" {% if p and p.featured %}checked{% endif %}> منتج مميز</label></div>
+      </div>
+      <div class="form-group">
+        <label>صورة المنتج</label>
+        {% if p and p.image %}<img src="{{ url_for('static',filename='uploads/'+p.image) }}" class="thumb" style="margin-bottom:8px">{% endif %}
+        <input type="file" name="image" accept="image/*">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button type="submit" class="btn btn-primary">حفظ</button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-ghost">إلغاء</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

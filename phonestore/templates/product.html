@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ p.name }} - {{ STORE_NAME }}{% endblock %}
+{% block content %}
+<section class="product-page container">
+  <div class="product-grid">
+    <div class="product-img {% if not p.image %}placeholder{% endif %}">
+      {% if p.image %}<img src="{{ url_for('static',filename='uploads/'+p.image) }}" alt="{{ p.name }}">{% endif %}
+    </div>
+    <div class="product-info">
+      <div class="brand">{{ p.brand }}</div>
+      <h1>{{ p.name }}</h1>
+      <div class="product-price">
+        <span class="now">{{ '{:,.0f}'.format(p.price) }} {{ CURRENCY }}</span>
+        {% if p.old_price and p.old_price > p.price %}
+          <span class="old">{{ '{:,.0f}'.format(p.old_price) }} {{ CURRENCY }}</span>
+        {% endif %}
+      </div>
+      <p class="desc">{{ p.description or 'هاتف ذكي بمواصفات احترافية وأداء استثنائي.' }}</p>
+      <div class="product-actions">
+        <a href="https://wa.me/{{ WHATSAPP_NUMBER }}?text=أريد طلب: {{ p.name }} - السعر: {{ '{:,.0f}'.format(p.price) }} {{ CURRENCY }}" target="_blank" class="btn btn-wa">📱 اطلب عبر واتساب</a>
+        <a href="{{ url_for('index') }}" class="btn btn-ghost">عودة للمتجر</a>
+      </div>
+      <div class="product-meta">
+        <div class="meta-item"><small>المخزون</small><strong>{{ 'متوفر' if p.stock>0 else 'نفذ' }}</strong></div>
+        <div class="meta-item"><small>الضمان</small><strong>سنة كاملة</strong></div>
+        <div class="meta-item"><small>التوصيل</small><strong>لكل الولايات</strong></div>
+        <div class="meta-item"><small>الدفع</small><strong>عند الاستلام</strong></div>
+      </div>
+    </div>
+  </div>
+
+  {% if related %}
+  <div class="section">
+    <h2 style="margin-bottom:24px">منتجات مشابهة</h2>
+    <div class="grid">
+      {% for r in related %}
+      <div class="card">
+        <a href="{{ url_for('product',pid=r.id) }}" class="card-img {% if not r.image %}placeholder{% endif %}">
+          {% if r.image %}<img src="{{ url_for('static',filename='uploads/'+r.image) }}" alt="">{% endif %}
+        </a>
+        <div class="card-body">
+          <div class="card-brand">{{ r.brand }}</div>
+          <div class="card-name"><a href="{{ url_for('product',pid=r.id) }}">{{ r.name }}</a></div>
+          <div class="card-price"><span class="price-now">{{ '{:,.0f}'.format(r.price) }} {{ CURRENCY }}</span></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

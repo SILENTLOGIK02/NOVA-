@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}تواصل معنا - {{ STORE_NAME }}{% endblock %}
+{% block content %}
+<section class="section container">
+  <div style="text-align:center;max-width:600px;margin:0 auto">
+    <h1 style="font-size:2.5rem;margin-bottom:12px">تواصل معنا</h1>
+    <p style="color:var(--text-dim)">نحن هنا للإجابة على جميع استفساراتكم على مدار الساعة.</p>
+  </div>
+  <div class="contact-grid">
+    <a href="https://wa.me/{{ WHATSAPP_NUMBER }}" target="_blank" class="contact-card">
+      <div class="icon">💬</div>
+      <h3>واتساب</h3>
+      <p>تواصل سريع ومباشر</p>
+      <span class="btn btn-wa">افتح المحادثة</span>
+    </a>
+    <a href="{{ INSTAGRAM_URL }}" target="_blank" class="contact-card">
+      <div class="icon">📷</div>
+      <h3>إنستغرام</h3>
+      <p>تابع آخر المنتجات والعروض</p>
+      <span class="btn btn-primary">زيارة الصفحة</span>
+    </a>
+    <a href="{{ FACEBOOK_URL }}" target="_blank" class="contact-card">
+      <div class="icon">📘</div>
+      <h3>فيسبوك</h3>
+      <p>كن على تواصل دائم معنا</p>
+      <span class="btn btn-primary">زيارة الصفحة</span>
+    </a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="hero container">
+  <h1>اكتشف عالم الهواتف الذكية الفاخرة</h1>
+  <p>أحدث الموديلات من Apple و Samsung و Xiaomi وأكثر — بأفضل الأسعار في الجزائر وضمان أصلي.</p>
+  <div class="hero-cta">
+    <a href="#products" class="btn btn-primary">تصفح المنتجات</a>
+    <a href="https://wa.me/{{ WHATSAPP_NUMBER }}" target="_blank" class="btn btn-wa">📱 طلب عبر واتساب</a>
+  </div>
+</section>
+
+{% if featured %}
+<section class="featured container">
+  <div class="featured-grid">
+    {% for p in featured %}
+      <a href="{{ url_for('product',pid=p.id) }}" class="feat-card {% if loop.first %}big{% endif %}">
+        <h3>{{ p.name }}</h3>
+        <p>{{ p.brand }}</p>
+        <span class="price">{{ '{:,.0f}'.format(p.price) }} {{ CURRENCY }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="section container" id="products">
+  <div class="section-head">
+    <h2>كل الهواتف</h2>
+    <div class="filters">
+      <a class="chip {% if not current_brand %}active{% endif %}" href="{{ url_for('index') }}">الكل</a>
+      {% for b in brands %}
+        <a class="chip {% if current_brand==b %}active{% endif %}" href="{{ url_for('index',brand=b) }}">{{ b }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="form-group" style="max-width:420px;margin-bottom:24px">
+    <input id="liveSearch" type="search" placeholder="🔍 بحث فوري عن المنتجات...">
+  </div>
+
+  {% if products %}
+  <div class="grid">
+    {% for p in products %}
+    <div class="card" data-product="{{ p.name }} {{ p.brand }}">
+      {% if p.old_price and p.old_price > p.price %}<span class="badge">عرض</span>{% endif %}
+      <a href="{{ url_for('product',pid=p.id) }}" class="card-img {% if not p.image %}placeholder{% endif %}">
+        {% if p.image %}<img src="{{ url_for('static',filename='uploads/'+p.image) }}" alt="{{ p.name }}" loading="lazy">{% endif %}
+      </a>
+      <div class="card-body">
+        <div class="card-brand">{{ p.brand }}</div>
+        <div class="card-name"><a href="{{ url_for('product',pid=p.id) }}">{{ p.name }}</a></div>
+        <div class="card-price">
+          <span class="price-now">{{ '{:,.0f}'.format(p.price) }} {{ CURRENCY }}</span>
+          {% if p.old_price and p.old_price > p.price %}
+            <span class="price-old">{{ '{:,.0f}'.format(p.old_price) }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="card-actions">
+        <a href="{{ url_for('product',pid=p.id) }}" class="btn btn-ghost">التفاصيل</a>
+        <a href="https://wa.me/{{ WHATSAPP_NUMBER }}?text=أريد طلب: {{ p.name }}" target="_blank" class="btn btn-primary">اطلب</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p style="text-align:center;color:var(--text-dim);padding:60px 0">لا توجد منتجات حالياً.</p>
+  {% endif %}
+</section>
+
+{% endblock %}

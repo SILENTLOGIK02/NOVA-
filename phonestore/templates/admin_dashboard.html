@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}لوحة التحكم - {{ STORE_NAME }}{% endblock %}
+{% block content %}
+<section class="section container">
+  <div class="admin-bar">
+    <h1>📦 إدارة المنتجات</h1>
+    <div style="display:flex;gap:8px">
+      <a href="{{ url_for('admin_add') }}" class="btn btn-primary">+ إضافة منتج</a>
+      <a href="{{ url_for('admin_logout') }}" class="btn btn-ghost">خروج</a>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>صورة</th><th>الاسم</th><th>الماركة</th><th>السعر</th><th>المخزون</th><th>مميز</th><th>إجراءات</th></tr></thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td>{% if p.image %}<img src="{{ url_for('static',filename='uploads/'+p.image) }}" class="thumb">{% else %}<div class="thumb" style="display:flex;align-items:center;justify-content:center">📱</div>{% endif %}</td>
+          <td><strong>{{ p.name }}</strong></td>
+          <td>{{ p.brand }}</td>
+          <td style="color:var(--primary);font-weight:700">{{ '{:,.0f}'.format(p.price) }} {{ CURRENCY }}</td>
+          <td>{{ p.stock }}</td>
+          <td>{{ '⭐' if p.featured else '—' }}</td>
+          <td class="row-actions">
+            <a href="{{ url_for('admin_edit',pid=p.id) }}" class="btn btn-ghost">تعديل</a>
+            <form method="post" action="{{ url_for('admin_delete',pid=p.id) }}" style="display:inline" onsubmit="return confirm('حذف؟')">
+              <button class="btn btn-danger">حذف</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-dim)">لا توجد منتجات</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

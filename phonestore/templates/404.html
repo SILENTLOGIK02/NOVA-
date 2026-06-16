@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="section container" style="text-align:center;padding:120px 0">
+  <h1 style="font-size:6rem;background:var(--gradient);-webkit-background-clip:text;color:transparent">404</h1>
+  <p style="color:var(--text-dim);margin:16px 0 32px">الصفحة غير موجودة</p>
+  <a href="{{ url_for('index') }}" class="btn btn-primary">العودة للرئيسية</a>
+</section>
+{% endblock %}
