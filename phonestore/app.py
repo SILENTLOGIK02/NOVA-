@@ -1,27 +1,25 @@
 """
-NOVA+ Phone Store - Flask Application
-Run: python app.py  -> http://localhost:5000
-Admin: /admin/login  (default: admin@nova.com / admin123)
+NOVA+ Phone Store - Flask Application (PostgreSQL Updated)
 """
 import os
-import sqlite3
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, g, abort)
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+import psycopg2
+from psycopg2.extras import DictCursor
 
 # ============== CONFIG ==============
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213000000000"  # ← غيّر الرقم هنا
+WHATSAPP_NUMBER  = "213000000000"  
 INSTAGRAM_URL    = "https://instagram.com/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
-ADMIN_PASSWORD   = "Motou3122009"
+ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الجديدة
 SECRET_KEY       = "change-this-secret-key"
-DB_PATH          = "store.db"
 UPLOAD_FOLDER    = "static/uploads"
 ALLOWED_EXT      = {"png", "jpg", "jpeg", "webp", "gif"}
 # ====================================
@@ -33,15 +31,21 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# الحصول على رابط قاعدة البيانات من متغيرات بيئة ريندر
+DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # ---------- DB helpers ----------
 def get_db():
     db = getattr(g, "_db", None)
     if db is None:
-        db = g._db = sqlite3.connect(DB_PATH)
-        db.row_factory = sqlite3.Row
+        # الاتصال بـ PostgreSQL أو SQLite كاحتياطي محلي
+        if DATABASE_URL:
+            db = g._db = psycopg2.connect(DATABASE_URL, sslmode='require')
+        else:
+            import sqlite3
+            db = g._db = sqlite3.connect("store.db")
+            db.row_factory = sqlite3.Row
     return db
-
 
 @app.teardown_appcontext
 def close_db(exc):
@@ -49,62 +53,54 @@ def close_db(exc):
     if db is not None:
         db.close()
 
-
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS products(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        brand TEXT,
-        price REAL NOT NULL,
-        old_price REAL,
-        description TEXT,
-        image TEXT,
-        stock INTEGER DEFAULT 1,
-        featured INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )""")
-    c.execute("""CREATE TABLE IF NOT EXISTS admins(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL
-    )""")
-    # default admin
-    c.execute("SELECT id FROM admins WHERE email=?", (ADMIN_EMAIL,))
-    if not c.fetchone():
-        c.execute("INSERT INTO admins(email,password) VALUES(?,?)",
-                  (ADMIN_EMAIL, generate_password_hash(ADMIN_PASSWORD)))
-
-    # seed demo products
-    c.execute("SELECT COUNT(*) FROM products")
-    if c.fetchone()[0] == 0:
-        demo = [
-            ("iPhone 15 Pro Max", "Apple", 285000, 310000,
-             "أحدث هاتف من Apple بشريحة A17 Pro وكاميرا احترافية بدقة 48MP.",
-             "", 5, 1),
-            ("Samsung Galaxy S24 Ultra", "Samsung", 260000, 280000,
-             "هاتف Samsung الرائد بقلم S Pen وكاميرا 200MP وشاشة Dynamic AMOLED 2X.",
-             "", 8, 1),
-            ("Xiaomi 14 Pro", "Xiaomi", 145000, 160000,
-             "أداء قوي بمعالج Snapdragon 8 Gen 3 وكاميرا Leica.",
-             "", 12, 1),
-            ("Google Pixel 8 Pro", "Google", 175000, None,
-             "تجربة Android النقية مع ذكاء اصطناعي متقدم وكاميرا مذهلة.",
-             "", 4, 0),
-            ("OnePlus 12", "OnePlus", 155000, 170000,
-             "شحن سريع 100W وأداء استثنائي وشاشة 120Hz.",
-             "", 7, 0),
-            ("Honor Magic 6 Pro", "Honor", 135000, None,
-             "تصميم فاخر وكاميرا متطورة وبطارية تدوم طويلاً.",
-             "", 6, 0),
-        ]
-        c.executemany("""INSERT INTO products
-            (name,brand,price,old_price,description,image,stock,featured)
-            VALUES (?,?,?,?,?,?,?,?)""", demo)
-    conn.commit()
-    conn.close()
-
+    if DATABASE_URL:
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS products(
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            brand TEXT,
+            price REAL NOT NULL,
+            old_price REAL,
+            description TEXT,
+            image TEXT,
+            stock INTEGER DEFAULT 1,
+            featured INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
+        c.execute("""CREATE TABLE IF NOT EXISTS admins(
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )""")
+        
+        # التحقق وتحديث أو إنشاء حساب الأدمن بكلمة المرور الجديدة دائماً
+        c.execute("SELECT id FROM admins WHERE email=%s", (ADMIN_EMAIL,))
+        row = c.fetchone()
+        hashed_password = generate_password_hash(ADMIN_PASSWORD)
+        if not row:
+            c.execute("INSERT INTO admins(email,password) VALUES(%s,%s)", (ADMIN_EMAIL, hashed_password))
+        else:
+            c.execute("UPDATE admins SET password=%s WHERE email=%s", (hashed_password, ADMIN_EMAIL))
+            
+        conn.commit()
+        conn.close()
+    else:
+        # كود تشغيل احتياطي محلي في حال عدم وجود متغير البيئة
+        import sqlite3
+        conn = sqlite3.connect("store.db")
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS products(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, brand TEXT, price REAL NOT NULL, old_price REAL, description TEXT, image TEXT, stock INTEGER DEFAULT 1, featured INTEGER DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS admins(id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL)""")
+        c.execute("SELECT id FROM admins WHERE email=?", (ADMIN_EMAIL,))
+        hashed_password = generate_password_hash(ADMIN_PASSWORD)
+        if not c.fetchone():
+            c.execute("INSERT INTO admins(email,password) VALUES(?,?)", (ADMIN_EMAIL, hashed_password))
+        else:
+            c.execute("UPDATE admins SET password=? WHERE email=?", (hashed_password, ADMIN_EMAIL))
+        conn.commit()
+        conn.close()
 
 # ---------- Auth ----------
 def login_required(f):
@@ -115,10 +111,8 @@ def login_required(f):
         return f(*a, **kw)
     return wrap
 
-
 def allowed_file(name):
     return "." in name and name.rsplit(".", 1)[1].lower() in ALLOWED_EXT
-
 
 # ---------- Context ----------
 @app.context_processor
@@ -132,49 +126,67 @@ def inject_globals():
         FACEBOOK_URL=FACEBOOK_URL,
     )
 
-
 # ---------- Public routes ----------
 @app.route("/")
 def index():
     db = get_db()
     q = request.args.get("q", "").strip()
     brand = request.args.get("brand", "").strip()
+    
+    # مواءمة الصياغة لتتوافق مع SQLite و PostgreSQL
+    placeholder = "%s" if DATABASE_URL else "?"
+    
     sql = "SELECT * FROM products WHERE 1=1"
     args = []
     if q:
-        sql += " AND (name LIKE ? OR brand LIKE ? OR description LIKE ?)"
+        sql += f" AND (name LIKE {placeholder} OR brand LIKE {placeholder} OR description LIKE {placeholder})"
         args += [f"%{q}%"] * 3
     if brand:
-        sql += " AND brand=?"
+        sql += f" AND brand={placeholder}"
         args.append(brand)
+        
     sql += " ORDER BY featured DESC, created_at DESC"
-    products = db.execute(sql, args).fetchall()
-    featured = db.execute(
-        "SELECT * FROM products WHERE featured=1 ORDER BY created_at DESC LIMIT 3"
-    ).fetchall()
-    brands = [r[0] for r in db.execute(
-        "SELECT DISTINCT brand FROM products WHERE brand!='' ORDER BY brand"
-    ).fetchall()]
-    return render_template("index.html", products=products, featured=featured,
-                           brands=brands, q=q, current_brand=brand)
-
+    
+    if DATABASE_URL:
+        c = db.cursor(cursor_factory=DictCursor)
+        c.execute(sql, args)
+        products = c.fetchall()
+        c.execute("SELECT * FROM products WHERE featured=1 ORDER BY created_at DESC LIMIT 3")
+        featured = c.fetchall()
+        c.execute("SELECT DISTINCT brand FROM products WHERE brand!='' ORDER BY brand")
+        brands = [r['brand'] for r in c.fetchall()]
+        c.close()
+    else:
+        products = db.execute(sql, args).fetchall()
+        featured = db.execute("SELECT * FROM products WHERE featured=1 ORDER BY created_at DESC LIMIT 3").fetchall()
+        brands = [r[0] for r in db.execute("SELECT DISTINCT brand FROM products WHERE brand!='' ORDER BY brand").fetchall()]
+        
+    return render_template("index.html", products=products, featured=featured, brands=brands, q=q, current_brand=brand)
 
 @app.route("/product/<int:pid>")
 def product(pid):
     db = get_db()
-    p = db.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+    placeholder = "%s" if DATABASE_URL else "?"
+    if DATABASE_URL:
+        c = db.cursor(cursor_factory=DictCursor)
+        c.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,))
+        p = c.fetchone()
+        related = []
+        if p:
+            c.execute(f"SELECT * FROM products WHERE brand={placeholder} AND id!={placeholder} LIMIT 4", (p["brand"], pid))
+            related = c.fetchall()
+        c.close()
+    else:
+        p = db.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,)).fetchone()
+        related = db.execute(f"SELECT * FROM products WHERE brand={placeholder} AND id!={placeholder} LIMIT 4", (p["brand"], pid)).fetchall() if p else []
+        
     if not p:
         abort(404)
-    related = db.execute(
-        "SELECT * FROM products WHERE brand=? AND id!=? LIMIT 4",
-        (p["brand"], pid)).fetchall()
     return render_template("product.html", p=p, related=related)
-
 
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
-
 
 # ---------- Admin ----------
 @app.route("/admin/login", methods=["GET", "POST"])
@@ -182,28 +194,40 @@ def admin_login():
     if request.method == "POST":
         email = request.form.get("email", "").strip()
         pw = request.form.get("password", "")
-        row = get_db().execute(
-            "SELECT * FROM admins WHERE email=?", (email,)).fetchone()
+        db = get_db()
+        placeholder = "%s" if DATABASE_URL else "?"
+        
+        if DATABASE_URL:
+            c = db.cursor(cursor_factory=DictCursor)
+            c.execute(f"SELECT * FROM admins WHERE email={placeholder}", (email,))
+            row = c.fetchone()
+            c.close()
+        else:
+            row = db.execute(f"SELECT * FROM admins WHERE email={placeholder}", (email,)).fetchone()
+            
         if row and check_password_hash(row["password"], pw):
             session["admin"] = email
             return redirect(url_for("admin_dashboard"))
         flash("بيانات الدخول غير صحيحة", "error")
     return render_template("admin_login.html")
 
-
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin", None)
     return redirect(url_for("index"))
 
-
 @app.route("/admin")
 @login_required
 def admin_dashboard():
-    products = get_db().execute(
-        "SELECT * FROM products ORDER BY created_at DESC").fetchall()
+    db = get_db()
+    if DATABASE_URL:
+        c = db.cursor(cursor_factory=DictCursor)
+        c.execute("SELECT * FROM products ORDER BY created_at DESC")
+        products = c.fetchall()
+        c.close()
+    else:
+        products = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
     return render_template("admin_dashboard.html", products=products)
-
 
 @app.route("/admin/add", methods=["GET", "POST"])
 @login_required
@@ -212,28 +236,39 @@ def admin_add():
         return _save_product(None)
     return render_template("admin_form.html", p=None)
 
-
 @app.route("/admin/edit/<int:pid>", methods=["GET", "POST"])
 @login_required
 def admin_edit(pid):
     db = get_db()
-    p = db.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+    placeholder = "%s" if DATABASE_URL else "?"
+    if DATABASE_URL:
+        c = db.cursor(cursor_factory=DictCursor)
+        c.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,))
+        p = c.fetchone()
+        c.close()
+    else:
+        p = db.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,)).fetchone()
+        
     if not p:
         abort(404)
     if request.method == "POST":
         return _save_product(pid)
     return render_template("admin_form.html", p=p)
 
-
 @app.route("/admin/delete/<int:pid>", methods=["POST"])
 @login_required
 def admin_delete(pid):
     db = get_db()
-    db.execute("DELETE FROM products WHERE id=?", (pid,))
+    placeholder = "%s" if DATABASE_URL else "?"
+    if DATABASE_URL:
+        c = db.cursor()
+        c.execute(f"DELETE FROM products WHERE id={placeholder}", (pid,))
+        c.close()
+    else:
+        db.execute(f"DELETE FROM products WHERE id={placeholder}", (pid,))
     db.commit()
     flash("تم حذف المنتج", "success")
     return redirect(url_for("admin_dashboard"))
-
 
 def _save_product(pid):
     f = request.form
@@ -250,36 +285,46 @@ def _save_product(pid):
         image = fn
 
     db = get_db()
+    placeholder = "%s" if DATABASE_URL else "?"
+    
     if pid:
         if not image:
-            image = db.execute(
-                "SELECT image FROM products WHERE id=?", (pid,)).fetchone()["image"]
-        db.execute("""UPDATE products SET name=?,brand=?,price=?,old_price=?,
-                      description=?,image=?,stock=?,featured=? WHERE id=?""",
-                   (f["name"], f.get("brand", ""), float(f["price"] or 0),
-                    float(f["old_price"]) if f.get("old_price") else None,
-                    f.get("description", ""), image,
-                    int(f.get("stock") or 0),
-                    1 if f.get("featured") else 0, pid))
-        flash("تم تحديث المنتج", "success")
+            if DATABASE_URL:
+                c = db.cursor()
+                c.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,))
+                image = c.fetchone()[0]
+                c.close()
+            else:
+                image = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
+                
+        sql = f"""UPDATE products SET name={placeholder},brand={placeholder},price={placeholder},old_price={placeholder},
+                  description={placeholder},image={placeholder},stock={placeholder},featured={placeholder} WHERE id={placeholder}"""
+        params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
+                  float(f["old_price"]) if f.get("old_price") else None,
+                  f.get("description", ""), image, int(f.get("stock") or 0),
+                  1 if f.get("featured") else 0, pid)
     else:
-        db.execute("""INSERT INTO products
-            (name,brand,price,old_price,description,image,stock,featured)
-            VALUES(?,?,?,?,?,?,?,?)""",
-                   (f["name"], f.get("brand", ""), float(f["price"] or 0),
-                    float(f["old_price"]) if f.get("old_price") else None,
-                    f.get("description", ""), image,
-                    int(f.get("stock") or 0),
-                    1 if f.get("featured") else 0))
-        flash("تم إضافة المنتج", "success")
+        sql = f"""INSERT INTO products (name,brand,price,old_price,description,image,stock,featured)
+                  VALUES({placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder})"""
+        params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
+                  float(f["old_price"]) if f.get("old_price") else None,
+                  f.get("description", ""), image, int(f.get("stock") or 0),
+                  1 if f.get("featured") else 0)
+                  
+    if DATABASE_URL:
+        c = db.cursor()
+        c.execute(sql, params)
+        c.close()
+    else:
+        db.execute(sql, params)
+        
     db.commit()
+    flash("تم حفظ التعديلات بنجاح", "success")
     return redirect(url_for("admin_dashboard"))
-
 
 @app.errorhandler(404)
 def e404(_):
     return render_template("404.html"), 404
-
 
 if __name__ == "__main__":
     init_db()
