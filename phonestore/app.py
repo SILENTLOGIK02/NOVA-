@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (PostgreSQL Optimized)
+NOVA+ Phone Store - Flask Application (Pure Connection Version)
 """
 import os
 from functools import wraps
