@@ -14,8 +14,8 @@ import pg8000
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213000000000"  
-INSTAGRAM_URL    = "https://instagram.com/"
+WHATSAPP_NUMBER  = "213775661700"  
+INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
 ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الجديدة الخاصة بك
