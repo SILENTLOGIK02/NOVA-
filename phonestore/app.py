@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Pure Connection Version)
+NOVA+ Phone Store - Flask Application (pg8000 Stable Version)
 """
 import os
 from functools import wraps
@@ -8,8 +8,7 @@ from flask import (Flask, render_template, request, redirect, url_for,
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import urllib.parse
-import psycopg2
-from psycopg2.extras import DictCursor
+import pg8000
 
 # ============== CONFIG ==============
 STORE_NAME       = "NOVA+"
@@ -19,7 +18,7 @@ WHATSAPP_NUMBER  = "213000000000"
 INSTAGRAM_URL    = "https://instagram.com/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
-ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الجديدة
+ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الجديدة الخاصة بك
 SECRET_KEY       = "change-this-secret-key"
 UPLOAD_FOLDER    = "static/uploads"
 ALLOWED_EXT      = {"png", "jpg", "jpeg", "webp", "gif"}
@@ -34,12 +33,31 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+def parse_db_url(url):
+    """تحليل رابط قاعدة البيانات يدوياً للتوافق التام مع pg8000"""
+    parsed = urllib.parse.urlparse(url)
+    return {
+        "user": parsed.username,
+        "password": parsed.password,
+        "host": parsed.hostname,
+        "port": parsed.port or 5432,
+        "database": parsed.path.lstrip('/')
+    }
+
 # ---------- DB helpers ----------
 def get_db():
     db = getattr(g, "_db", None)
     if db is None:
         if DATABASE_URL:
-            db = g._db = psycopg2.connect(DATABASE_URL, sslmode='require')
+            creds = parse_db_url(DATABASE_URL)
+            db = g._db = pg8000.connect(
+                user=creds["user"],
+                password=creds["password"],
+                host=creds["host"],
+                port=creds["port"],
+                database=creds["database"],
+                ssl_context=True
+            )
         else:
             import sqlite3
             db = g._db = sqlite3.connect("store.db")
@@ -52,9 +70,21 @@ def close_db(exc):
     if db is not None:
         db.close()
 
+def make_dict(cursor, row):
+    """تحويل صفوف البيانات إلى قاموس لتسهيل القراءة بالكود"""
+    return {col[0]: val for col, val in zip(cursor.description, row)}
+
 def init_db():
     if DATABASE_URL:
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        creds = parse_db_url(DATABASE_URL)
+        conn = pg8000.connect(
+            user=creds["user"],
+            password=creds["password"],
+            host=creds["host"],
+            port=creds["port"],
+            database=creds["database"],
+            ssl_context=True
+        )
         c = conn.cursor()
         c.execute("""CREATE TABLE IF NOT EXISTS products(
             id SERIAL PRIMARY KEY,
@@ -131,7 +161,7 @@ def index():
     brand = request.args.get("brand", "").strip()
     
     placeholder = "%s" if DATABASE_URL else "?"
-    sql = "SELECT * FROM products WHERE 1=1"
+    sql = "SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products WHERE 1=1"
     args = []
     if q:
         sql += f" AND (name LIKE {placeholder} OR brand LIKE {placeholder} OR description LIKE {placeholder})"
@@ -143,14 +173,13 @@ def index():
     sql += " ORDER BY featured DESC, created_at DESC"
     
     if DATABASE_URL:
-        c = db.cursor(cursor_factory=DictCursor)
+        c = db.cursor()
         c.execute(sql, args)
-        products = c.fetchall()
-        c.execute("SELECT * FROM products WHERE featured=1 ORDER BY created_at DESC LIMIT 3")
-        featured = c.fetchall()
+        products = [make_dict(c, r) for r in c.fetchall()]
+        c.execute("SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products WHERE featured=1 ORDER BY created_at DESC LIMIT 3")
+        featured = [make_dict(c, r) for r in c.fetchall()]
         c.execute("SELECT DISTINCT brand FROM products WHERE brand!='' ORDER BY brand")
-        brands = [r['brand'] for r in c.fetchall()]
-        c.close()
+        brands = [r[0] for r in c.fetchall()]
     else:
         products = db.execute(sql, args).fetchall()
         featured = db.execute("SELECT * FROM products WHERE featured=1 ORDER BY created_at DESC LIMIT 3").fetchall()
@@ -163,14 +192,14 @@ def product(pid):
     db = get_db()
     placeholder = "%s" if DATABASE_URL else "?"
     if DATABASE_URL:
-        c = db.cursor(cursor_factory=DictCursor)
-        c.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,))
-        p = c.fetchone()
+        c = db.cursor()
+        c.execute(f"SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products WHERE id={placeholder}", (pid,))
+        row = c.fetchone()
+        p = make_dict(c, row) if row else None
         related = []
         if p:
-            c.execute(f"SELECT * FROM products WHERE brand={placeholder} AND id!={placeholder} LIMIT 4", (p["brand"], pid))
-            related = c.fetchall()
-        c.close()
+            c.execute(f"SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products WHERE brand={placeholder} AND id!={placeholder} LIMIT 4", (p["brand"], pid))
+            related = [make_dict(c, r) for r in c.fetchall()]
     else:
         p = db.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,)).fetchone()
         related = db.execute(f"SELECT * FROM products WHERE brand={placeholder} AND id!={placeholder} LIMIT 4", (p["brand"], pid)).fetchall() if p else []
@@ -193,10 +222,10 @@ def admin_login():
         placeholder = "%s" if DATABASE_URL else "?"
         
         if DATABASE_URL:
-            c = db.cursor(cursor_factory=DictCursor)
-            c.execute(f"SELECT * FROM admins WHERE email={placeholder}", (email,))
+            c = db.cursor()
+            c.execute(f"SELECT email, password FROM admins WHERE email={placeholder}", (email,))
             row = c.fetchone()
-            c.close()
+            row = make_dict(c, row) if row else None
         else:
             row = db.execute(f"SELECT * FROM admins WHERE email={placeholder}", (email,)).fetchone()
             
@@ -216,10 +245,9 @@ def admin_logout():
 def admin_dashboard():
     db = get_db()
     if DATABASE_URL:
-        c = db.cursor(cursor_factory=DictCursor)
-        c.execute("SELECT * FROM products ORDER BY created_at DESC")
-        products = c.fetchall()
-        c.close()
+        c = db.cursor()
+        c.execute("SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products ORDER BY created_at DESC")
+        products = [make_dict(c, r) for r in c.fetchall()]
     else:
         products = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
     return render_template("admin_dashboard.html", products=products)
@@ -237,10 +265,10 @@ def admin_edit(pid):
     db = get_db()
     placeholder = "%s" if DATABASE_URL else "?"
     if DATABASE_URL:
-        c = db.cursor(cursor_factory=DictCursor)
-        c.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,))
-        p = c.fetchone()
-        c.close()
+        c = db.cursor()
+        c.execute(f"SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products WHERE id={placeholder}", (pid,))
+        row = c.fetchone()
+        p = make_dict(c, row) if row else None
     else:
         p = db.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,)).fetchone()
         
@@ -258,7 +286,6 @@ def admin_delete(pid):
     if DATABASE_URL:
         c = db.cursor()
         c.execute(f"DELETE FROM products WHERE id={placeholder}", (pid,))
-        c.close()
     else:
         db.execute(f"DELETE FROM products WHERE id={placeholder}", (pid,))
     db.commit()
@@ -288,7 +315,6 @@ def _save_product(pid):
                 c = db.cursor()
                 c.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,))
                 image = c.fetchone()[0]
-                c.close()
             else:
                 image = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
                 
@@ -309,7 +335,6 @@ def _save_product(pid):
     if DATABASE_URL:
         c = db.cursor()
         c.execute(sql, params)
-        c.close()
     else:
         db.execute(sql, params)
         
