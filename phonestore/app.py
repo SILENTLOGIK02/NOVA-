@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (PostgreSQL Updated)
+NOVA+ Phone Store - Flask Application (PostgreSQL Optimized)
 """
 import os
 from functools import wraps
@@ -7,6 +7,7 @@ from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, g, abort)
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+import urllib.parse
 import psycopg2
 from psycopg2.extras import DictCursor
 
@@ -31,14 +32,12 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# الحصول على رابط قاعدة البيانات من متغيرات بيئة ريندر
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # ---------- DB helpers ----------
 def get_db():
     db = getattr(g, "_db", None)
     if db is None:
-        # الاتصال بـ PostgreSQL أو SQLite كاحتياطي محلي
         if DATABASE_URL:
             db = g._db = psycopg2.connect(DATABASE_URL, sslmode='require')
         else:
@@ -75,7 +74,6 @@ def init_db():
             password TEXT NOT NULL
         )""")
         
-        # التحقق وتحديث أو إنشاء حساب الأدمن بكلمة المرور الجديدة دائماً
         c.execute("SELECT id FROM admins WHERE email=%s", (ADMIN_EMAIL,))
         row = c.fetchone()
         hashed_password = generate_password_hash(ADMIN_PASSWORD)
@@ -87,7 +85,6 @@ def init_db():
         conn.commit()
         conn.close()
     else:
-        # كود تشغيل احتياطي محلي في حال عدم وجود متغير البيئة
         import sqlite3
         conn = sqlite3.connect("store.db")
         c = conn.cursor()
@@ -133,9 +130,7 @@ def index():
     q = request.args.get("q", "").strip()
     brand = request.args.get("brand", "").strip()
     
-    # مواءمة الصياغة لتتوافق مع SQLite و PostgreSQL
     placeholder = "%s" if DATABASE_URL else "?"
-    
     sql = "SELECT * FROM products WHERE 1=1"
     args = []
     if q:
