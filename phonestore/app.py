@@ -1,40 +1,43 @@
 """
-NOVA+ Phone Store - Flask Application (pg8000 Stable Version)
+NOVA+ Phone Store - Flask Application (Cloudinary + pg8000 Stable Version)
 """
 import os
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, g, abort)
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 import urllib.parse
 import pg8000
+import cloudinary
+import cloudinary.uploader
 
 # ============== CONFIG ==============
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213775661700"  
+WHATSAPP_NUMBER  = "213775661700"  # يمكنك تعديل رقمك هنا مستقبلاً
 INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
-ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الجديدة الخاصة بك
+ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الخاصة بك
 SECRET_KEY       = "change-this-secret-key"
-UPLOAD_FOLDER    = "static/uploads"
-ALLOWED_EXT      = {"png", "jpg", "jpeg", "webp", "gif"}
 # ====================================
+
+# إعدادات التخزين السحابي Cloudinary تلقائياً
+cloudinary.config( 
+  cloud_name = "dfdjazglv", 
+  api_key = "355759682994158", 
+  api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
+  secure = True
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def parse_db_url(url):
-    """تحليل رابط قاعدة البيانات يدوياً للتوافق التام مع pg8000"""
     parsed = urllib.parse.urlparse(url)
     return {
         "user": parsed.username,
@@ -71,7 +74,6 @@ def close_db(exc):
         db.close()
 
 def make_dict(cursor, row):
-    """تحويل صفوف البيانات إلى قاموس لتسهيل القراءة بالكود"""
     return {col[0]: val for col, val in zip(cursor.description, row)}
 
 def init_db():
@@ -137,9 +139,6 @@ def login_required(f):
             return redirect(url_for("admin_login"))
         return f(*a, **kw)
     return wrap
-
-def allowed_file(name):
-    return "." in name and name.rsplit(".", 1)[1].lower() in ALLOWED_EXT
 
 # ---------- Context ----------
 @app.context_processor
@@ -294,42 +293,38 @@ def admin_delete(pid):
 
 def _save_product(pid):
     f = request.form
-    image = ""
+    image_url = ""
     file = request.files.get("image")
-    if file and file.filename and allowed_file(file.filename):
-        fn = secure_filename(file.filename)
-        base, ext = os.path.splitext(fn)
-        i = 1
-        while os.path.exists(os.path.join(UPLOAD_FOLDER, fn)):
-            fn = f"{base}_{i}{ext}"
-            i += 1
-        file.save(os.path.join(UPLOAD_FOLDER, fn))
-        image = fn
+    
+    # رفع السيرفر السحابي في حالة توفر ملف جديد
+    if file and file.filename:
+        upload_result = cloudinary.uploader.upload(file)
+        image_url = upload_result.get("secure_url")
 
     db = get_db()
     placeholder = "%s" if DATABASE_URL else "?"
     
     if pid:
-        if not image:
+        if not image_url:
             if DATABASE_URL:
                 c = db.cursor()
                 c.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,))
-                image = c.fetchone()[0]
+                image_url = c.fetchone()[0]
             else:
-                image = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
+                image_url = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
                 
         sql = f"""UPDATE products SET name={placeholder},brand={placeholder},price={placeholder},old_price={placeholder},
                   description={placeholder},image={placeholder},stock={placeholder},featured={placeholder} WHERE id={placeholder}"""
         params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
                   float(f["old_price"]) if f.get("old_price") else None,
-                  f.get("description", ""), image, int(f.get("stock") or 0),
+                  f.get("description", ""), image_url, int(f.get("stock") or 0),
                   1 if f.get("featured") else 0, pid)
     else:
         sql = f"""INSERT INTO products (name,brand,price,old_price,description,image,stock,featured)
                   VALUES({placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder})"""
         params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
                   float(f["old_price"]) if f.get("old_price") else None,
-                  f.get("description", ""), image, int(f.get("stock") or 0),
+                  f.get("description", ""), image_url, int(f.get("stock") or 0),
                   1 if f.get("featured") else 0)
                   
     if DATABASE_URL:
