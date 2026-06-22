@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Local Image Storage - No Cloudinary)
+NOVA+ Phone Store - Flask Application (pg8000 Stable Version)
 """
 import os
 from functools import wraps
@@ -18,28 +18,23 @@ WHATSAPP_NUMBER  = "213000000000"
 INSTAGRAM_URL    = "https://instagram.com/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
-ADMIN_PASSWORD   = "Motou3122009"  
+ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الجديدة الخاصة بك
 SECRET_KEY       = "change-this-secret-key"
+UPLOAD_FOLDER    = "static/uploads"
+ALLOWED_EXT      = {"png", "jpg", "jpeg", "webp", "gif"}
 # ====================================
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# مجلد حفظ الصور على السيرفر المحلي والامتدادات المسموحة
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# إنشاء مجلد الرفع تلقائياً إذا لم يكن موجوداً
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 def parse_db_url(url):
+    """تحليل رابط قاعدة البيانات يدوياً للتوافق التام مع pg8000"""
     parsed = urllib.parse.urlparse(url)
     return {
         "user": parsed.username,
@@ -76,6 +71,7 @@ def close_db(exc):
         db.close()
 
 def make_dict(cursor, row):
+    """تحويل صفوف البيانات إلى قاموس لتسهيل القراءة بالكود"""
     return {col[0]: val for col, val in zip(cursor.description, row)}
 
 def init_db():
@@ -129,7 +125,7 @@ def init_db():
         if not c.fetchone():
             c.execute("INSERT INTO admins(email,password) VALUES(?,?)", (ADMIN_EMAIL, hashed_password))
         else:
-            c.execute("UPDATE admins SET password=? WHERE email=?", (ADMIN_EMAIL, hashed_password))
+            c.execute("UPDATE admins SET password=? WHERE email=?", (hashed_password, ADMIN_EMAIL))
         conn.commit()
         conn.close()
 
@@ -141,6 +137,9 @@ def login_required(f):
             return redirect(url_for("admin_login"))
         return f(*a, **kw)
     return wrap
+
+def allowed_file(name):
+    return "." in name and name.rsplit(".", 1)[1].lower() in ALLOWED_EXT
 
 # ---------- Context ----------
 @app.context_processor
@@ -295,44 +294,42 @@ def admin_delete(pid):
 
 def _save_product(pid):
     f = request.form
-    image_url = ""
+    image = ""
     file = request.files.get("image")
-    
     if file and file.filename and allowed_file(file.filename):
-        # حفظ الصورة محلياً داخل السيرفر في مجلد static/uploads
-        filename = secure_filename(file.filename)
-        # لتجنب تكرار أسماء الملفات، نربط اسم الملف بـ التوقيت الحالي أو تعديل فريد
-        unique_filename = f"{pid or 'new'}_{filename}"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
-        # نخزن مسار الصورة النسبي لكي تقرأه القوالب بسهولة
-        image_url = f"/static/uploads/{unique_filename}"
+        fn = secure_filename(file.filename)
+        base, ext = os.path.splitext(fn)
+        i = 1
+        while os.path.exists(os.path.join(UPLOAD_FOLDER, fn)):
+            fn = f"{base}_{i}{ext}"
+            i += 1
+        file.save(os.path.join(UPLOAD_FOLDER, fn))
+        image = fn
 
     db = get_db()
     placeholder = "%s" if DATABASE_URL else "?"
     
     if pid:
-        if not image_url:
+        if not image:
             if DATABASE_URL:
                 c = db.cursor()
                 c.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,))
-                row = c.fetchone()
-                if row:
-                    image_url = row[0] if isinstance(row, (list, tuple)) else row.get("image")
+                image = c.fetchone()[0]
             else:
-                image_url = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
+                image = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
                 
         sql = f"""UPDATE products SET name={placeholder},brand={placeholder},price={placeholder},old_price={placeholder},
                   description={placeholder},image={placeholder},stock={placeholder},featured={placeholder} WHERE id={placeholder}"""
         params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
                   float(f["old_price"]) if f.get("old_price") else None,
-                  f.get("description", ""), image_url, int(f.get("stock") or 0),
+                  f.get("description", ""), image, int(f.get("stock") or 0),
                   1 if f.get("featured") else 0, pid)
     else:
         sql = f"""INSERT INTO products (name,brand,price,old_price,description,image,stock,featured)
                   VALUES({placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder})"""
         params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
                   float(f["old_price"]) if f.get("old_price") else None,
-                  f.get("description", ""), image_url, int(f.get("stock") or 0),
+                  f.get("description", ""), image, int(f.get("stock") or 0),
                   1 if f.get("featured") else 0)
                   
     if DATABASE_URL:
