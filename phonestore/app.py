@@ -1,7 +1,15 @@
 """
-NOVA+ Phone Store - Flask Application (Final Absolute Cloudinary Fix)
+NOVA+ Phone Store - Flask Application (The Definitive Cache-Proof Cloudinary Fix)
 """
 import os
+import sys
+
+# خطوة أمان حاسمة: مسح أي مخلفات لكاش السيرفر أو متغيرات بيئة قديمة قد تسبب التضارب
+os.environ.pop('CLOUDINARY_URL', None)
+if 'cloudinary' in sys.modules:
+    import cloudinary
+    cloudinary._config = None
+
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, g, abort)
@@ -27,8 +35,13 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# إعداد أساسي للتطبيق
-cloudinary.config(secure=True)
+# الإعداد الصارم والمباشر للمفاتيح الصافية لحسابك لمنع أي تلاعب خارجي
+cloudinary.config(
+    cloud_name = "dfdjazglv",
+    api_key = "355759682994158",
+    api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
+    secure = True
+)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
@@ -292,7 +305,7 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        # تغذية الدالة بالمفاتيح الثلاثة الصافية مباشرة لضمان نجاح التوقيع والاتصال
+        # إرسال البيانات بشكل مستقل تماماً عن أي إعدادات سابقة مخزنة بالسيرفر
         upload_result = cloudinary.uploader.upload(
             file, 
             cloud_name = "dfdjazglv",
