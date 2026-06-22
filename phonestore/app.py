@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Cloudinary Environment Final Stable Version)
+NOVA+ Phone Store - Flask Application (Cloudinary Final Fix)
 """
 import os
 from functools import wraps
@@ -15,17 +15,22 @@ import cloudinary.uploader
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213775661700"  # اكتب رقم الواتساب الخاص بك هنا
+WHATSAPP_NUMBER  = "213775661700"  
 INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
-ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الخاصة بك
+ADMIN_PASSWORD   = "Motou3122009"  
 SECRET_KEY       = "change-this-secret-key"
 # ====================================
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
+
+# إعداد كلويديناري الصريح من متغيرات البيئة لمنع خطأ الـ Signature
+cloudinary.config(
+    cloudinary_url=os.environ.get('CLOUDINARY_URL')
+)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
@@ -288,7 +293,6 @@ def _save_product(pid):
     image_url = ""
     file = request.files.get("image")
     
-    # 1. إذا تم رفع صورة جديدة، نقوم برفعها سحابياً لـ Cloudinary
     if file and file.filename:
         upload_result = cloudinary.uploader.upload(file)
         image_url = upload_result.get("secure_url")
@@ -297,7 +301,6 @@ def _save_product(pid):
     placeholder = "%s" if DATABASE_URL else "?"
     
     if pid:
-        # 2. في حالة التعديل، إذا لم يتم اختيار صورة جديدة، نحتفظ بالصورة القديمة دون تدميرها
         if not image_url:
             if DATABASE_URL:
                 c = db.cursor()
