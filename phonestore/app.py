@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Pure URL-Based Setup)
+NOVA+ Phone Store - Flask Application (Fixed URL-Based Setup)
 """
 import os
 from functools import wraps
@@ -13,8 +13,8 @@ import pg8000
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213000000000"  
-INSTAGRAM_URL    = "https://instagram.com/"
+WHATSAPP_NUMBER  = "213775661700"  
+INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
 ADMIN_PASSWORD   = "Motou3122009"  
@@ -283,7 +283,7 @@ def admin_delete(pid):
 
 def _save_product(pid):
     f = request.form
-    # نأخذ رابط الصورة المباشر من خانة النص فقط
+    # تعديل جذري هنا لقراءة خانة الـ image_url التي ترسلها الاستمارة
     image_url = f.get("image_url", "").strip()
 
     db = get_db()
