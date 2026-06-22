@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Definitive Verified Credentials Fix)
+NOVA+ Phone Store - Flask Application (Standard Environment Setup)
 """
 import os
 from functools import wraps
@@ -27,14 +27,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# تثبيت الإعدادات الصحيحة والمحققة من حسابك مباشرة لمنع أي تعارض مع متغيرات البيئة
-cloudinary.config(
-    cloud_name = "dfdjazglv",
-    api_key = "3557596828994158",
-    api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
-    secure = True
-)
-
+# ترك المكتبة تتعرف تلقائياً على متغير البيئة CLOUDINARY_URL السليم الذي عدلته الآن
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 def parse_db_url(url):
@@ -297,13 +290,8 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        # استخدام إعدادات صريحة ومباشرة هنا أيضاً لضمان الرفع السليم للملفات بدون أخطاء
-        explicit_config = {
-            "cloud_name": "dfdjazglv",
-            "api_key": "3557596828994158",
-            "api_secret": "2F7KhyFPNXaaMqSNXI2V1mx-pPE"
-        }
-        upload_result = cloudinary.uploader.upload(file, **explicit_config)
+        # الرفع يعتمد الآن بسلاسة وتلقائية تامة على متغير البيئة الصحيح المتواجد في Render
+        upload_result = cloudinary.uploader.upload(file)
         image_url = upload_result.get("secure_url")
 
     db = get_db()
