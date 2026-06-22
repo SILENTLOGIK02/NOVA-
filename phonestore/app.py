@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Cloudinary Final Fix)
+NOVA+ Phone Store - Flask Application (Cloudinary Direct Keys Stable Version)
 """
 import os
 from functools import wraps
@@ -27,9 +27,12 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# إعداد كلويديناري الصريح من متغيرات البيئة لمنع خطأ الـ Signature
+# إعداد كلويديناري بشكل مباشر وصارم بمفاتيح حسابك الحالية
 cloudinary.config(
-    cloudinary_url=os.environ.get('CLOUDINARY_URL')
+    cloud_name = "dfdjazglv",
+    api_key = "355759682994158",
+    api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
+    secure = True
 )
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
