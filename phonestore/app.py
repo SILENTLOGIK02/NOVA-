@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Cloudinary Environment Stable Version)
+NOVA+ Phone Store - Flask Application (Cloudinary Environment Final Stable Version)
 """
 import os
 from functools import wraps
@@ -15,7 +15,7 @@ import cloudinary.uploader
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "2130775661700"  # يمكنك تعديل رقمك هنا مستقبلاً
+WHATSAPP_NUMBER  = "213775661700"  # اكتب رقم الواتساب الخاص بك هنا
 INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
@@ -288,6 +288,7 @@ def _save_product(pid):
     image_url = ""
     file = request.files.get("image")
     
+    # 1. إذا تم رفع صورة جديدة، نقوم برفعها سحابياً لـ Cloudinary
     if file and file.filename:
         upload_result = cloudinary.uploader.upload(file)
         image_url = upload_result.get("secure_url")
@@ -296,11 +297,14 @@ def _save_product(pid):
     placeholder = "%s" if DATABASE_URL else "?"
     
     if pid:
+        # 2. في حالة التعديل، إذا لم يتم اختيار صورة جديدة، نحتفظ بالصورة القديمة دون تدميرها
         if not image_url:
             if DATABASE_URL:
                 c = db.cursor()
                 c.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,))
-                image_url = c.fetchone()[0]
+                row = c.fetchone()
+                if row:
+                    image_url = row[0] if isinstance(row, (list, tuple)) else row.get("image")
             else:
                 image_url = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
                 
