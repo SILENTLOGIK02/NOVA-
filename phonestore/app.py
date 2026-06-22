@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Cloudinary + pg8000 Stable Version)
+NOVA+ Phone Store - Flask Application (Cloudinary Environment Stable Version)
 """
 import os
 from functools import wraps
@@ -15,21 +15,13 @@ import cloudinary.uploader
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213775661700"  # يمكنك تعديل رقمك هنا مستقبلاً
+WHATSAPP_NUMBER  = "2130775661700"  # يمكنك تعديل رقمك هنا مستقبلاً
 INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
 ADMIN_PASSWORD   = "Motou3122009"  # كلمة المرور الخاصة بك
 SECRET_KEY       = "change-this-secret-key"
 # ====================================
-
-# إعدادات التخزين السحابي Cloudinary تلقائياً
-cloudinary.config( 
-  cloud_name = "dfdjazglv", 
-  api_key = "355759682994158", 
-  api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
-  secure = True
-)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
@@ -296,7 +288,6 @@ def _save_product(pid):
     image_url = ""
     file = request.files.get("image")
     
-    # رفع السيرفر السحابي في حالة توفر ملف جديد
     if file and file.filename:
         upload_result = cloudinary.uploader.upload(file)
         image_url = upload_result.get("secure_url")
