@@ -1,15 +1,7 @@
 """
-NOVA+ Phone Store - Flask Application (The Definitive Key-Corrected Cloudinary Fix)
+NOVA+ Phone Store - Flask Application (The Ultimate Direct-Config Fix)
 """
 import os
-import sys
-
-# مسح مخلفات كاش السيرفر المتضاربة لضمان بدء نظيف
-os.environ.pop('CLOUDINARY_URL', None)
-if 'cloudinary' in sys.modules:
-    import cloudinary
-    cloudinary._config = None
-
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, g, abort)
@@ -23,7 +15,7 @@ import cloudinary.uploader
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213775661700"  
+WHATSAPP_NUMBER  = "2130775661700"  
 INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
@@ -35,7 +27,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# إعدادات الحساب العامة
+# الإعدادات العامة الافتراضية
 cloudinary.config(
     cloud_name = "dfdjazglv",
     api_key = "355759682994158",
@@ -305,16 +297,16 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        # فرض تصفير وضبط المتغيرات إجبارياً هنا داخل الدالة لمنع كاش ريندر القديم
-        import cloudinary
-        import cloudinary.uploader
-        cloudinary._config = None 
+        # الحل الحاسم: تمرير الإعدادات الصحيحة مباشرة داخل دالة الرفع للتفوق على كاش السيرفر تماماً
+        direct_config = {
+            "cloud_name": "dfdjazglv",
+            "api_key": "355759682994158",
+            "api_secret": "2F7KhYFPNXaaMqSNXi2V1mx-pPE"
+        }
         
         upload_result = cloudinary.uploader.upload(
-            file, 
-            cloud_name = "dfdjazglv",
-            api_key = "355759682994158",  # المفتاح الصحيح
-            api_secret = "2F7KhYFPNXaaMqSNXi2V1mx-pPE"
+            file,
+            **direct_config
         )
         image_url = upload_result.get("secure_url")
 
