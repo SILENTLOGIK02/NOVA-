@@ -1,6 +1,5 @@
-
 """
-NOVA+ Phone Store - Flask Application (Complete & Clean Production Code)
+NOVA+ Phone Store - Flask Application (Standard Environment Fix)
 """
 import os
 from functools import wraps
@@ -11,7 +10,7 @@ import urllib.parse
 import pg8000
 import cloudinary
 import cloudinary.uploader
- 
+
 # ============== CONFIG ==============
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
@@ -23,26 +22,14 @@ ADMIN_EMAIL      = "admin@nova.com"
 ADMIN_PASSWORD   = "Motou3122009"  
 SECRET_KEY       = "change-this-secret-key"
 # ====================================
- 
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
- 
-# ===== إعداد Cloudinary المصحح =====
-# إذا وُجد CLOUDINARY_URL في بيئة Render يُستخدم تلقائياً
-# وإذا لم يوجد (للتطوير المحلي) يُستخدم الإعداد اليدوي
-CLOUDINARY_URL_ENV = os.environ.get("CLOUDINARY_URL", "")
-if not CLOUDINARY_URL_ENV:
-    cloudinary.config(
-        cloud_name="dfdjazglv",
-        api_key="3557596828994158",
-        api_secret="2F7KhyFPNXaaMqSNXI2V1mx-pPE",
-        secure=True
-    )
-# ====================================
- 
+
+# ستقوم المكتبة الآن بالتقاط متغير CLOUDINARY_URL الصحيح من السيرفر مباشرة
 DATABASE_URL = os.environ.get('DATABASE_URL')
- 
+
 def parse_db_url(url):
     parsed = urllib.parse.urlparse(url)
     return {
@@ -52,7 +39,7 @@ def parse_db_url(url):
         "port": parsed.port or 5432,
         "database": parsed.path.lstrip('/')
     }
- 
+
 # ---------- DB helpers ----------
 def get_db():
     db = getattr(g, "_db", None)
@@ -72,16 +59,16 @@ def get_db():
             db = g._db = sqlite3.connect("store.db")
             db.row_factory = sqlite3.Row
     return db
- 
+
 @app.teardown_appcontext
 def close_db(exc):
     db = getattr(g, "_db", None)
     if db is not None:
         db.close()
- 
+
 def make_dict(cursor, row):
     return {col[0]: val for col, val in zip(cursor.description, row)}
- 
+
 def init_db():
     if DATABASE_URL:
         creds = parse_db_url(DATABASE_URL)
@@ -136,7 +123,7 @@ def init_db():
             c.execute("UPDATE admins SET password=? WHERE email=?", (ADMIN_EMAIL, hashed_password))
         conn.commit()
         conn.close()
- 
+
 # ---------- Auth ----------
 def login_required(f):
     @wraps(f)
@@ -145,7 +132,7 @@ def login_required(f):
             return redirect(url_for("admin_login"))
         return f(*a, **kw)
     return wrap
- 
+
 # ---------- Context ----------
 @app.context_processor
 def inject_globals():
@@ -157,7 +144,7 @@ def inject_globals():
         INSTAGRAM_URL=INSTAGRAM_URL,
         FACEBOOK_URL=FACEBOOK_URL,
     )
- 
+
 # ---------- Public routes ----------
 @app.route("/")
 def index():
@@ -191,7 +178,7 @@ def index():
         brands = [r[0] for r in db.execute("SELECT DISTINCT brand FROM products WHERE brand!='' ORDER BY brand").fetchall()]
         
     return render_template("index.html", products=products, featured=featured, brands=brands, q=q, current_brand=brand)
- 
+
 @app.route("/product/<int:pid>")
 def product(pid):
     db = get_db()
@@ -212,11 +199,11 @@ def product(pid):
     if not p:
         abort(404)
     return render_template("product.html", p=p, related=related)
- 
+
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
- 
+
 # ---------- Admin ----------
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -239,12 +226,12 @@ def admin_login():
             return redirect(url_for("admin_dashboard"))
         flash("بيانات الدخول غير صحيحة", "error")
     return render_template("admin_login.html")
- 
+
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin", None)
     return redirect(url_for("index"))
- 
+
 @app.route("/admin")
 @login_required
 def admin_dashboard():
@@ -256,14 +243,14 @@ def admin_dashboard():
     else:
         products = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
     return render_template("admin_dashboard.html", products=products)
- 
+
 @app.route("/admin/add", methods=["GET", "POST"])
 @login_required
 def admin_add():
     if request.method == "POST":
         return _save_product(None)
     return render_template("admin_form.html", p=None)
- 
+
 @app.route("/admin/edit/<int:pid>", methods=["GET", "POST"])
 @login_required
 def admin_edit(pid):
@@ -282,7 +269,7 @@ def admin_edit(pid):
     if request.method == "POST":
         return _save_product(pid)
     return render_template("admin_form.html", p=p)
- 
+
 @app.route("/admin/delete/<int:pid>", methods=["POST"])
 @login_required
 def admin_delete(pid):
@@ -296,22 +283,17 @@ def admin_delete(pid):
     db.commit()
     flash("تم حذف المنتج", "success")
     return redirect(url_for("admin_dashboard"))
- 
+
 def _save_product(pid):
     f = request.form
     image_url = ""
     file = request.files.get("image")
     
     if file and file.filename:
-       import cloudinary.uploader as cl_uploader
-upload_result = cl_uploader.upload(
-    file,
-    api_key="3557596828994158",
-    api_secret="2F7KhyFPNXaaMqSNXI2V1mx-pPE",
-    cloud_name="dfdjazglv"
-)
+        # سيتم الرفع الآن تلقائياً بالاعتماد على رابط سيرفر Render السليم
+        upload_result = cloudinary.uploader.upload(file)
         image_url = upload_result.get("secure_url")
- 
+
     db = get_db()
     placeholder = "%s" if DATABASE_URL else "?"
     
@@ -349,11 +331,11 @@ upload_result = cl_uploader.upload(
     db.commit()
     flash("تم حفظ التعديلات بنجاح", "success")
     return redirect(url_for("admin_dashboard"))
- 
+
 @app.errorhandler(404)
 def e404(_):
     return render_template("404.html"), 404
- 
+
 if __name__ == "__main__":
     init_db()
     app.run(debug=True, host="0.0.0.0", port=5000)
