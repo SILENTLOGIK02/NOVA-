@@ -44,9 +44,18 @@
     {% for p in products %}
     <div class="card" data-product="{{ p.name }} {{ p.brand }}">
       {% if p.old_price and p.old_price > p.price %}<span class="badge">عرض</span>{% endif %}
+      
       <a href="{{ url_for('product',pid=p.id) }}" class="card-img {% if not p.image %}placeholder{% endif %}">
-        {% if p.image %}<img src="{{ url_for('static',filename='uploads/'+p.image) }}" alt="{{ p.name }}" loading="lazy">{% endif %}
+        {% if p.image %}
+          {# التحقق مما إذا كان رابط الصورة خارجياً أم ملفاً محلياً #}
+          {% if p.image.startswith('http://') or p.image.startswith('https://') %}
+            <img src="{{ p.image }}" alt="{{ p.name }}" loading="lazy">
+          {% else %}
+            <img src="{{ url_for('static', filename='uploads/' + p.image) }}" alt="{{ p.name }}" loading="lazy">
+          {% endif %}
+        {% endif %}
       </a>
+      
       <div class="card-body">
         <div class="card-brand">{{ p.brand }}</div>
         <div class="card-name"><a href="{{ url_for('product',pid=p.id) }}">{{ p.name }}</a></div>
