@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (Cloudinary Strict Signature Fix)
+NOVA+ Phone Store - Flask Application (Final Absolute Cloudinary Fix)
 """
 import os
 from functools import wraps
@@ -27,10 +27,8 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# ربط الإعدادات بالمتغير الصحيح الموجود في ريندر
-cloudinary.config(
-    cloudinary_url=os.environ.get('CLOUDINARY_URL')
-)
+# إعداد أساسي للتطبيق
+cloudinary.config(secure=True)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
@@ -294,12 +292,12 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        # هنا تم حل المشكلة: إجبار الدالة على توليد توقيع سحابي متوافق بدون تضارب
+        # تغذية الدالة بالمفاتيح الثلاثة الصافية مباشرة لضمان نجاح التوقيع والاتصال
         upload_result = cloudinary.uploader.upload(
             file, 
-            signature=None, 
-            api_key=None, 
-            api_secret=None
+            cloud_name = "dfdjazglv",
+            api_key = "355759682994158",
+            api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE"
         )
         image_url = upload_result.get("secure_url")
 
