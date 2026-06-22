@@ -1,15 +1,5 @@
-"""
-NOVA+ Phone Store - Flask Application (The Definitive Cache-Proof Cloudinary Fix)
-"""
 import os
 import sys
-
-# خطوة أمان حاسمة: مسح أي مخلفات لكاش السيرفر أو متغيرات بيئة قديمة قد تسبب التضارب
-os.environ.pop('CLOUDINARY_URL', None)
-if 'cloudinary' in sys.modules:
-    import cloudinary
-    cloudinary._config = None
-
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, g, abort)
@@ -35,13 +25,8 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# الإعداد الصارم والمباشر للمفاتيح الصافية لحسابك لمنع أي تلاعب خارجي
-cloudinary.config(
-    cloud_name = "dfdjazglv",
-    api_key = "355759682994158",
-    api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
-    secure = True
-)
+# Cloudinary سيقرأ الإعدادات مباشرة من CLOUDINARY_URL في البيئة
+cloudinary.config(secure=True)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
@@ -238,124 +223,4 @@ def admin_login():
             
         if row and check_password_hash(row["password"], pw):
             session["admin"] = email
-            return redirect(url_for("admin_dashboard"))
-        flash("بيانات الدخول غير صحيحة", "error")
-    return render_template("admin_login.html")
-
-@app.route("/admin/logout")
-def admin_logout():
-    session.pop("admin", None)
-    return redirect(url_for("index"))
-
-@app.route("/admin")
-@login_required
-def admin_dashboard():
-    db = get_db()
-    if DATABASE_URL:
-        c = db.cursor()
-        c.execute("SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products ORDER BY created_at DESC")
-        products = [make_dict(c, r) for r in c.fetchall()]
-    else:
-        products = db.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
-    return render_template("admin_dashboard.html", products=products)
-
-@app.route("/admin/add", methods=["GET", "POST"])
-@login_required
-def admin_add():
-    if request.method == "POST":
-        return _save_product(None)
-    return render_template("admin_form.html", p=None)
-
-@app.route("/admin/edit/<int:pid>", methods=["GET", "POST"])
-@login_required
-def admin_edit(pid):
-    db = get_db()
-    placeholder = "%s" if DATABASE_URL else "?"
-    if DATABASE_URL:
-        c = db.cursor()
-        c.execute(f"SELECT id, name, brand, price, old_price, description, image, stock, featured FROM products WHERE id={placeholder}", (pid,))
-        row = c.fetchone()
-        p = make_dict(c, row) if row else None
-    else:
-        p = db.execute(f"SELECT * FROM products WHERE id={placeholder}", (pid,)).fetchone()
-        
-    if not p:
-        abort(404)
-    if request.method == "POST":
-        return _save_product(pid)
-    return render_template("admin_form.html", p=p)
-
-@app.route("/admin/delete/<int:pid>", methods=["POST"])
-@login_required
-def admin_delete(pid):
-    db = get_db()
-    placeholder = "%s" if DATABASE_URL else "?"
-    if DATABASE_URL:
-        c = db.cursor()
-        c.execute(f"DELETE FROM products WHERE id={placeholder}", (pid,))
-    else:
-        db.execute(f"DELETE FROM products WHERE id={placeholder}", (pid,))
-    db.commit()
-    flash("تم حذف المنتج", "success")
-    return redirect(url_for("admin_dashboard"))
-
-def _save_product(pid):
-    f = request.form
-    image_url = ""
-    file = request.files.get("image")
-    
-    if file and file.filename:
-        # إرسال البيانات بشكل مستقل تماماً عن أي إعدادات سابقة مخزنة بالسيرفر
-        upload_result = cloudinary.uploader.upload(
-            file, 
-            cloud_name = "dfdjazglv",
-            api_key = "355759682994158",
-            api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE"
-        )
-        image_url = upload_result.get("secure_url")
-
-    db = get_db()
-    placeholder = "%s" if DATABASE_URL else "?"
-    
-    if pid:
-        if not image_url:
-            if DATABASE_URL:
-                c = db.cursor()
-                c.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,))
-                row = c.fetchone()
-                if row:
-                    image_url = row[0] if isinstance(row, (list, tuple)) else row.get("image")
-            else:
-                image_url = db.execute(f"SELECT image FROM products WHERE id={placeholder}", (pid,)).fetchone()["image"]
-                
-        sql = f"""UPDATE products SET name={placeholder},brand={placeholder},price={placeholder},old_price={placeholder},
-                  description={placeholder},image={placeholder},stock={placeholder},featured={placeholder} WHERE id={placeholder}"""
-        params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
-                  float(f["old_price"]) if f.get("old_price") else None,
-                  f.get("description", ""), image_url, int(f.get("stock") or 0),
-                  1 if f.get("featured") else 0, pid)
-    else:
-        sql = f"""INSERT INTO products (name,brand,price,old_price,description,image,stock,featured)
-                  VALUES({placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder},{placeholder})"""
-        params = (f["name"], f.get("brand", ""), float(f["price"] or 0),
-                  float(f["old_price"]) if f.get("old_price") else None,
-                  f.get("description", ""), image_url, int(f.get("stock") or 0),
-                  1 if f.get("featured") else 0)
-                  
-    if DATABASE_URL:
-        c = db.cursor()
-        c.execute(sql, params)
-    else:
-        db.execute(sql, params)
-        
-    db.commit()
-    flash("تم حفظ التعديلات بنجاح", "success")
-    return redirect(url_for("admin_dashboard"))
-
-@app.errorhandler(404)
-def e404(_):
-    return render_template("404.html"), 404
-
-if __name__ == "__main__":
-    init_db()
-    app.run(debug=True, host="0.0.0.0", port=5000)
+            return redirect(url_for("admin
