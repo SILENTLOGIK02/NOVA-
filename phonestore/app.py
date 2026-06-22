@@ -30,8 +30,8 @@ app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 # الإعداد القياسي الصحيح للمكتبة بدون أي تلاعب بالبيئة
 cloudinary.config(
     cloud_name = "dfdjazglv",
-    api_key = "355759682894158",
-    api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
+    api_key = "355759682994158",
+    api_secret = "2F7KhYFPNXaaMqSNXi2V1mx-pPE",
     secure = True
 )
 
