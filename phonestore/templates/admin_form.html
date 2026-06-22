@@ -24,7 +24,13 @@
       <div class="form-group" style="margin-top: 15px; padding: 12px; border: 1px dashed var(--primary, #ff9900); border-radius: 6px;">
         <label style="color: var(--primary, #ff9900); font-weight: bold;">رابط صورة المنتج المباشر (URL)</label>
         <input type="text" name="image_url" value="{{ p.image if p else '' }}" placeholder="ضع رابط الصورة المباشر هنا..." required style="width: 100%;">
-        <small style="color: #aaa; display: block; mt-1: 5px;">انسخ رابط أي صورة من الإنترنت وضعه هنا مباشرة ليعمل للأبد.</small>
+        
+        {% if p and p.image %}
+          <div style="margin-top: 10px;">
+            <p style="font-size: 12px; color: #aaa; margin-bottom: 5px;">معاينة الصورة الحالية:</p>
+            <img src="{{ p.image }}" class="thumb" style="max-width: 100px; max-height: 100px; border-radius: 4px;">
+          </div>
+        {% endif %}
       </div>
       
       <div style="display:flex;gap:8px">
