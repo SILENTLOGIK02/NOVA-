@@ -1,5 +1,5 @@
 """
-NOVA+ Phone Store - Flask Application (The Ultimate Direct-Config Fix)
+NOVA+ Phone Store - Flask Application (Standard Clean Setup)
 """
 import os
 from functools import wraps
@@ -15,8 +15,8 @@ import cloudinary.uploader
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "2130775661700"  
-INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
+WHATSAPP_NUMBER  = "213000000000"  
+INSTAGRAM_URL    = "https://instagram.com/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
 ADMIN_PASSWORD   = "Motou3122009"  
@@ -27,11 +27,11 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# الإعدادات العامة الافتراضية
+# الإعداد القياسي الصحيح للمكتبة بدون أي تلاعب بالبيئة
 cloudinary.config(
     cloud_name = "dfdjazglv",
-    api_key = "355759682994158",
-    api_secret = "2F7KhYFPNXaaMqSNXi2V1mx-pPE",
+    api_key = "355759682894158",
+    api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
     secure = True
 )
 
@@ -127,7 +127,7 @@ def init_db():
         if not c.fetchone():
             c.execute("INSERT INTO admins(email,password) VALUES(?,?)", (ADMIN_EMAIL, hashed_password))
         else:
-            c.execute("UPDATE admins SET password=? WHERE email=?", (hashed_password, ADMIN_EMAIL))
+            c.execute("UPDATE admins SET password=? WHERE email=?", (ADMIN_EMAIL, hashed_password))
         conn.commit()
         conn.close()
 
@@ -297,17 +297,8 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        # الحل الحاسم: تمرير الإعدادات الصحيحة مباشرة داخل دالة الرفع للتفوق على كاش السيرفر تماماً
-        direct_config = {
-            "cloud_name": "dfdjazglv",
-            "api_key": "355759682994158",
-            "api_secret": "2F7KhYFPNXaaMqSNXi2V1mx-pPE"
-        }
-        
-        upload_result = cloudinary.uploader.upload(
-            file,
-            **direct_config
-        )
+        # استخدام دالة الرفع القياسية المعتمدة على الـ config الأصلي المستقر
+        upload_result = cloudinary.uploader.upload(file)
         image_url = upload_result.get("secure_url")
 
     db = get_db()
