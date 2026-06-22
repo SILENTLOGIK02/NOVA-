@@ -303,7 +303,13 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        upload_result = cloudinary.uploader.upload(file)
+       import cloudinary.uploader as cl_uploader
+upload_result = cl_uploader.upload(
+    file,
+    api_key="3557596828994158",
+    api_secret="2F7KhyFPNXaaMqSNXI2V1mx-pPE",
+    cloud_name="dfdjazglv"
+)
         image_url = upload_result.get("secure_url")
  
     db = get_db()
