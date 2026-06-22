@@ -23,8 +23,8 @@ import cloudinary.uploader
 STORE_NAME       = "NOVA+"
 STORE_TAGLINE    = "متجر الهواتف الذكية الفاخرة"
 CURRENCY         = "د.ج"   # Algerian Dinar
-WHATSAPP_NUMBER  = "213000000000"  
-INSTAGRAM_URL    = "https://instagram.com/"
+WHATSAPP_NUMBER  = "213775661700"  
+INSTAGRAM_URL    = "https://www.instagram.com/novaplus__off/"
 FACEBOOK_URL     = "https://facebook.com/"
 ADMIN_EMAIL      = "admin@nova.com"
 ADMIN_PASSWORD   = "Motou3122009"  
@@ -35,11 +35,11 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# إعدادات الحساب العامة (المفاتيح الصحيحة تماماً)
+# إعدادات الحساب العامة
 cloudinary.config(
     cloud_name = "dfdjazglv",
-    api_key = "355759682894158",
-    api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE",
+    api_key = "355759682994158",
+    api_secret = "2F7KhYFPNXaaMqSNXi2V1mx-pPE",
     secure = True
 )
 
@@ -305,12 +305,16 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        # هنا يتم التمرير الإجباري للمفاتيح الصحيحة داخل الدالة مباشرة لمنع أي تضارب
+        # فرض تصفير وضبط المتغيرات إجبارياً هنا داخل الدالة لمنع كاش ريندر القديم
+        import cloudinary
+        import cloudinary.uploader
+        cloudinary._config = None 
+        
         upload_result = cloudinary.uploader.upload(
             file, 
             cloud_name = "dfdjazglv",
-            api_key = "355759682894158",  # الرقم 2 الصحيح تماماً لحسابك
-            api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE"
+            api_key = "355759682994158",  # المفتاح الصحيح
+            api_secret = "2F7KhYFPNXaaMqSNXi2V1mx-pPE"
         )
         image_url = upload_result.get("secure_url")
 
