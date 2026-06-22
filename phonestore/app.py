@@ -1,15 +1,14 @@
 """
-NOVA+ Phone Store - Flask Application (Standard Environment Fix)
+NOVA+ Phone Store - Flask Application (Local Image Storage - No Cloudinary)
 """
 import os
 from functools import wraps
 from flask import (Flask, render_template, request, redirect, url_for,
                    session, flash, g, abort)
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import urllib.parse
 import pg8000
-import cloudinary
-import cloudinary.uploader
 
 # ============== CONFIG ==============
 STORE_NAME       = "NOVA+"
@@ -27,8 +26,18 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# ستقوم المكتبة الآن بالتقاط متغير CLOUDINARY_URL الصحيح من السيرفر مباشرة
+# مجلد حفظ الصور على السيرفر المحلي والامتدادات المسموحة
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# إنشاء مجلد الرفع تلقائياً إذا لم يكن موجوداً
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 DATABASE_URL = os.environ.get('DATABASE_URL')
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def parse_db_url(url):
     parsed = urllib.parse.urlparse(url)
@@ -289,10 +298,14 @@ def _save_product(pid):
     image_url = ""
     file = request.files.get("image")
     
-    if file and file.filename:
-        # سيتم الرفع الآن تلقائياً بالاعتماد على رابط سيرفر Render السليم
-        upload_result = cloudinary.uploader.upload(file)
-        image_url = upload_result.get("secure_url")
+    if file and file.filename and allowed_file(file.filename):
+        # حفظ الصورة محلياً داخل السيرفر في مجلد static/uploads
+        filename = secure_filename(file.filename)
+        # لتجنب تكرار أسماء الملفات، نربط اسم الملف بـ التوقيت الحالي أو تعديل فريد
+        unique_filename = f"{pid or 'new'}_{filename}"
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+        # نخزن مسار الصورة النسبي لكي تقرأه القوالب بسهولة
+        image_url = f"/static/uploads/{unique_filename}"
 
     db = get_db()
     placeholder = "%s" if DATABASE_URL else "?"
