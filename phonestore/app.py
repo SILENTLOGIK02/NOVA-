@@ -35,7 +35,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024  # 8 MB
 
-# تم تصحيح الـ api_key هنا إلى القيمة الحقيقية المطابقة لحسابك تماماً (استبدال 9 بـ 2)
+# إعدادات الحساب العامة (المفاتيح الصحيحة تماماً)
 cloudinary.config(
     cloud_name = "dfdjazglv",
     api_key = "355759682894158",
@@ -305,11 +305,11 @@ def _save_product(pid):
     file = request.files.get("image")
     
     if file and file.filename:
-        # تم تصحيح المفتاح هنا أيضاً لضمان مطابقة التوقيع بنجاح
+        # هنا يتم التمرير الإجباري للمفاتيح الصحيحة داخل الدالة مباشرة لمنع أي تضارب
         upload_result = cloudinary.uploader.upload(
             file, 
             cloud_name = "dfdjazglv",
-            api_key = "355759682894158",
+            api_key = "355759682894158",  # الرقم 2 الصحيح تماماً لحسابك
             api_secret = "2F7KhyFPNXaaMqSNXI2V1mx-pPE"
         )
         image_url = upload_result.get("secure_url")
